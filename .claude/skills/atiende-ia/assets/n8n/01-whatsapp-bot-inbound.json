@@ -1,0 +1,333 @@
+{
+  "name": "01 - WhatsApp bot inbound (IA + derivacion a asesor)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "wa-webhook-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-2304, -240],
+      "id": "70d7a885-5bf5-47d6-bfcc-1fa9da498cdc",
+      "name": "Webhook",
+      "webhookId": "3342c735-662f-4fe6-910c-a29c72b5e290"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [
+            {
+              "id": "12a8f1ae-d154-42cd-944c-1f91be8aaf77",
+              "leftValue": "={{ $json.query['hub.verify_token'] }}",
+              "rightValue": "PEGA_AQUI_TU_VERIFY_TOKEN_DE_META",
+              "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [-2080, -240],
+      "id": "7f4b3ba7-9d54-48d7-bb43-9734b891b838",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query['hub.challenge'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [-1808, -400],
+      "id": "f8bd37ef-ef03-4342-855f-d48d9b6b3d76",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=Forbidden",
+        "options": { "responseCode": 403 }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [-1808, -64],
+      "id": "4df74a92-0d67-4496-8afc-607b088f2c04",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wa-webhook-inbound",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-2304, 160],
+      "id": "a282e400-59d3-48d3-9447-220c595972b7",
+      "name": "Webhook1",
+      "webhookId": "3342c735-662f-4fe6-910c-a29c72b5e290"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst entry = body.entry && body.entry[0];\nconst change = entry && entry.changes && entry.changes[0];\nconst value = change && change.value;\nconst msg = value && value.messages && value.messages[0];\n\nif (!msg) {\n  return [];\n}\n\nconst contact = (value.contacts && value.contacts[0]) || {};\nconst phone = msg.from;\nconst name = contact.profile ? contact.profile.name : phone;\nconst type = msg.type;\nconst text = type === 'text' ? msg.text.body : (type === 'button' ? msg.button.text : '');\n\nreturn [{\n  json: {\n    wa_id: phone,\n    contact_name: name,\n    wamid: msg.id,\n    message_type: type,\n    message_text: text,\n    timestamp: msg.timestamp\n  }\n}];"
+      },
+      "id": "926e4867-fc1a-4285-b0d3-0d38a336d64b",
+      "name": "Normalizar mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1808, 160]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{$json.message_text}}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b634834c-2dd9-42a3-8432-04a976e392a7",
+      "name": "Es mensaje valido",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-1280, 160]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into conversations (wa_id, contact_name, status, pipeline_stage, assigned_advisor_id, last_message_at)\nvalues ($1, $2, 'bot', 'nuevo', null, now())\non conflict (wa_id) do update set\n  contact_name = excluded.contact_name,\n  last_message_at = now(),\n  status = case when conversations.status = 'resuelto' then 'bot' else conversations.status end,\n  pipeline_stage = case when conversations.status = 'resuelto' then 'nuevo' else conversations.pipeline_stage end,\n  assigned_advisor_id = case when conversations.status = 'resuelto' then null else conversations.assigned_advisor_id end\nreturning wa_id, status, pipeline_stage, assigned_advisor_id;",
+        "options": {
+          "queryReplacement": "={{ [$json.wa_id, $json.contact_name] }}"
+        }
+      },
+      "id": "67ade92c-d13b-410d-bdde-f5e98166b677",
+      "name": "Obtener o crear conversacion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [-1056, 160],
+      "credentials": { "postgres": { "id": "deB5WjNsKZnDkzjh", "name": "Postgres account" } }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into messages (wa_id, wamid, sender, body, created_at)\nvalues ($1, $2, 'cliente', $3, now());",
+        "options": {
+          "queryReplacement": "={{ [$('Normalizar mensaje').item.json.wa_id, $('Normalizar mensaje').item.json.wamid, $('Normalizar mensaje').item.json.message_text] }}"
+        }
+      },
+      "id": "feed02fc-2199-49c0-b427-07b691fdfd29",
+      "name": "Guardar mensaje del cliente",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [-832, 160],
+      "credentials": { "postgres": { "id": "deB5WjNsKZnDkzjh", "name": "Postgres account" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $('Obtener o crear conversacion').item.json.status }}",
+              "rightValue": "bot",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b7b4185e-e025-4fbb-9b71-4061f84ede26",
+      "name": "Conversacion en manos del bot",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-624, 160]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select knowledge_text from company_knowledge order by updated_at desc limit 1;",
+        "options": {}
+      },
+      "id": "64c240e6-1a0f-401d-bc0b-368331302fb4",
+      "name": "Obtener base de conocimiento",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [-400, 32],
+      "credentials": { "postgres": { "id": "deB5WjNsKZnDkzjh", "name": "Postgres account" } }
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+        "options": { "temperature": 0.3 }
+      },
+      "id": "44fe872c-adb4-4068-b0af-edece6d7e6da",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [-176, -112],
+      "credentials": { "openAiApi": { "id": null, "name": "", "__aiGatewayManaged": true } }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Normalizar mensaje').item.json.message_text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Eres el asistente virtual de atencion al cliente de la empresa. Responde SIEMPRE en español, de forma breve, clara y amable.  Usa exclusivamente la siguiente informacion de la empresa para responder. Si la respuesta no esta en esta informacion, o el cliente pide explicitamente hablar con una persona/asesor, NO inventes datos: responde brevemente que vas a conectarlo con un asesor y agrega al final, en una linea aparte, exactamente el texto [DERIVAR_HUMANO].  Informacion de la empresa: {{ $('Obtener base de conocimiento').item.json.knowledge_text }}"
+            }
+          ]
+        }
+      },
+      "id": "30543c2f-2b53-4785-b729-75e8f67f42d0",
+      "name": "Generar respuesta IA",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [-176, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.text || $input.first().json.response || '';\nconst needsHuman = raw.includes('[DERIVAR_HUMANO]');\nconst clean = raw.replace('[DERIVAR_HUMANO]', '').trim();\n\nreturn [{\n  json: {\n    ai_response: clean,\n    needs_human: needsHuman\n  }\n}];"
+      },
+      "id": "ee36f539-d8a4-45a3-811c-ddc2866a8e38",
+      "name": "Detectar si requiere humano",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [208, 160]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [
+            {
+              "id": "c3",
+              "leftValue": "={{$json.needs_human}}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "63d547f6-be41-4e1c-9560-37b326877530",
+      "name": "Requiere asesor humano",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [416, 160]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "update conversations set status = 'pendiente_humano', pipeline_stage = 'esperando_asesor' where wa_id = $1;",
+        "options": {
+          "queryReplacement": "={{ [$('Normalizar mensaje').item.json.wa_id] }}"
+        }
+      },
+      "id": "abbf9212-5e57-4f06-8643-558c6a85ef3f",
+      "name": "Marcar pendiente de asesor",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [656, 32],
+      "credentials": { "postgres": { "id": "deB5WjNsKZnDkzjh", "name": "Postgres account" } }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "=PEGA_AQUI_TU_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $('Normalizar mensaje').item.json.wa_id }}",
+        "textBody": "=Un asesor de nuestro equipo te va a atender en breve. Gracias por tu paciencia 🙌",
+        "additionalFields": {}
+      },
+      "id": "2a224817-7f05-43f9-971d-4975d5ec68cd",
+      "name": "Avisar transicion a humano",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [864, 32],
+      "webhookId": "0d94775f-d0e9-40a7-b2cd-6e25e2d64e70",
+      "credentials": { "whatsAppApi": { "id": "BUhiq2N9BNzoOWWP", "name": "WhatsApp account" } }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "=PEGA_AQUI_TU_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $('Normalizar mensaje').item.json.wa_id }}",
+        "textBody": "={{ $json.ai_response }}",
+        "additionalFields": {}
+      },
+      "id": "89ac93b2-d7c6-41a3-96f8-0f6efd061545",
+      "name": "Enviar respuesta IA por WhatsApp",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [656, 272],
+      "webhookId": "6996e62f-b8d3-49eb-9129-8767416d4069",
+      "credentials": { "whatsAppApi": { "id": "BUhiq2N9BNzoOWWP", "name": "WhatsApp account" } }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into messages (wa_id, sender, body, created_at)\nvalues ($1, 'bot', $2, now());",
+        "options": {
+          "queryReplacement": "={{ [$('Normalizar mensaje').item.json.wa_id, $('Detectar si requiere humano').item.json.ai_response] }}"
+        }
+      },
+      "id": "ebd28651-acd8-4dad-b6ff-dfd607c6e8f1",
+      "name": "Guardar respuesta IA",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [864, 272],
+      "credentials": { "postgres": { "id": "deB5WjNsKZnDkzjh", "name": "Postgres account" } }
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "If", "type": "main", "index": 0 }]] },
+    "If": {
+      "main": [
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }],
+        [{ "node": "Respond to Webhook1", "type": "main", "index": 0 }]
+      ]
+    },
+    "Respond to Webhook": { "main": [[]] },
+    "Webhook1": { "main": [[{ "node": "Normalizar mensaje", "type": "main", "index": 0 }]] },
+    "Normalizar mensaje": { "main": [[{ "node": "Es mensaje valido", "type": "main", "index": 0 }]] },
+    "Es mensaje valido": { "main": [[{ "node": "Obtener o crear conversacion", "type": "main", "index": 0 }]] },
+    "Obtener o crear conversacion": { "main": [[{ "node": "Guardar mensaje del cliente", "type": "main", "index": 0 }]] },
+    "Guardar mensaje del cliente": { "main": [[{ "node": "Conversacion en manos del bot", "type": "main", "index": 0 }]] },
+    "Conversacion en manos del bot": {
+      "main": [[{ "node": "Obtener base de conocimiento", "type": "main", "index": 0 }], []]
+    },
+    "Obtener base de conocimiento": { "main": [[{ "node": "Generar respuesta IA", "type": "main", "index": 0 }]] },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [[{ "node": "Generar respuesta IA", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Generar respuesta IA": { "main": [[{ "node": "Detectar si requiere humano", "type": "main", "index": 0 }]] },
+    "Detectar si requiere humano": { "main": [[{ "node": "Requiere asesor humano", "type": "main", "index": 0 }]] },
+    "Requiere asesor humano": {
+      "main": [
+        [{ "node": "Marcar pendiente de asesor", "type": "main", "index": 0 }],
+        [{ "node": "Enviar respuesta IA por WhatsApp", "type": "main", "index": 0 }]
+      ]
+    },
+    "Marcar pendiente de asesor": { "main": [[{ "node": "Avisar transicion a humano", "type": "main", "index": 0 }]] },
+    "Avisar transicion a humano": { "main": [[]] },
+    "Enviar respuesta IA por WhatsApp": { "main": [[{ "node": "Guardar respuesta IA", "type": "main", "index": 0 }]] }
+  },
+  "settings": {},
+  "pinData": {}
+}

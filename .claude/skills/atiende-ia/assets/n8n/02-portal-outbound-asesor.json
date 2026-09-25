@@ -1,0 +1,135 @@
+{
+  "name": "Portal - Envio de mensaje del asesor a WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portal-send-message",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b2b2b2b2-0001-4b2b-8b2b-000000000001",
+      "name": "Webhook - Portal envia mensaje",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-880, 300],
+      "webhookId": "portal-send-message"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{$json.headers['x-portal-token']}}",
+              "rightValue": "PEGA_AQUI_EL_PORTAL_WEBHOOK_SECRET",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2b2b2b2-0002-4b2b-8b2b-000000000002",
+      "name": "Validar token del portal",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-660, 300]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "=PEGA_AQUI_TU_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $json.body.wa_id }}",
+        "textBody": "={{ $json.body.message }}",
+        "additionalFields": {}
+      },
+      "id": "b2b2b2b2-0003-4b2b-8b2b-000000000003",
+      "name": "Enviar mensaje por WhatsApp",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [-440, 220],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "WA_APP_CREDENTIAL_ID",
+          "name": "WhatsApp Business - AtiendeIA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "with nuevo_mensaje as (\n  insert into messages (wa_id, sender, advisor_id, body, created_at)\n  values ($1, 'asesor', $2::int, $3, now())\n)\nupdate conversations\nset status = 'human', pipeline_stage = 'en_atencion', assigned_advisor_id = $2::int, last_message_at = now()\nwhere wa_id = $1;",
+        "options": {
+          "queryReplacement": "={{ [$('Webhook - Portal envia mensaje').first().json.body.wa_id, $('Webhook - Portal envia mensaje').first().json.body.advisor_id, $('Webhook - Portal envia mensaje').first().json.body.message] }}"
+        }
+      },
+      "id": "b2b2b2b2-0004-4b2b-8b2b-000000000004",
+      "name": "Guardar mensaje del asesor",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [-220, 220],
+      "credentials": {
+        "postgres": {
+          "id": "CRM_POSTGRES_CREDENTIAL_ID",
+          "name": "CRM Postgres - AtiendeIA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": {}
+      },
+      "id": "b2b2b2b2-0005-4b2b-8b2b-000000000005",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [0, 220]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": false, \"error\": \"token invalido\" } }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "b2b2b2b2-0006-4b2b-8b2b-000000000006",
+      "name": "Responder no autorizado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [-440, 420]
+    }
+  ],
+  "connections": {
+    "Webhook - Portal envia mensaje": {
+      "main": [[{ "node": "Validar token del portal", "type": "main", "index": 0 }]]
+    },
+    "Validar token del portal": {
+      "main": [
+        [{ "node": "Enviar mensaje por WhatsApp", "type": "main", "index": 0 }],
+        [{ "node": "Responder no autorizado", "type": "main", "index": 0 }]
+      ]
+    },
+    "Enviar mensaje por WhatsApp": {
+      "main": [[{ "node": "Guardar mensaje del asesor", "type": "main", "index": 0 }]]
+    },
+    "Guardar mensaje del asesor": {
+      "main": [[{ "node": "Responder OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

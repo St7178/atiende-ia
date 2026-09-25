@@ -1,0 +1,229 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Tokens de shadcn/ui. En Tailwind v4 no hay tailwind.config.js: los colores
+ * se exponen a Tailwind con @theme inline mas abajo (bg-background, text-primary...).
+ * El portal corre en modo oscuro (<html class="dark">); :root queda como tema claro.
+ */
+:root {
+  --radius: 0.625rem;
+
+  --background: #ffffff;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --primary: #f59e0b;
+  --primary-foreground: #1c1403;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #f59e0b;
+
+  --sidebar: #fafafa;
+  --sidebar-foreground: #3f3f46;
+  --sidebar-primary: #f59e0b;
+  --sidebar-primary-foreground: #1c1403;
+  --sidebar-accent: #f4f4f5;
+  --sidebar-accent-foreground: #18181b;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #f59e0b;
+
+  /* Los colores de la marca (--brand, --on-brand, --brand-2, ...) vienen de
+     lib/brand.ts y se aplican en <html> desde app/layout.tsx. */
+  --accent-blue: #38bdf8;
+  --warning: #f59e0b;
+  --success: #22c55e;
+
+  /* Alias heredados del portal original */
+  --bg: var(--background);
+  --surface: var(--card);
+  --text-primary: var(--foreground);
+  --text-secondary: var(--muted-foreground);
+}
+
+/* Modo oscuro estilo iOS / WhatsApp: negro puro, grises del sistema de iOS y
+   el color de la marca (lib/brand.ts) en lugar del verde de WhatsApp. */
+.dark {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #1c1c1e;
+  --card-foreground: #ffffff;
+  --popover: #2c2c2e;
+  --popover-foreground: #ffffff;
+  --primary: var(--brand);
+  --primary-foreground: var(--on-brand);
+  --secondary: #1c1c1e;
+  --secondary-foreground: #ffffff;
+  --muted: #1c1c1e;
+  --muted-foreground: #8e8e93;
+  --accent: #2c2c2e;
+  --accent-foreground: #ffffff;
+  --destructive: #ff453a;
+  --destructive-foreground: #ffffff;
+  --border: rgb(255 255 255 / 0.08);
+  --input: rgb(255 255 255 / 0.1);
+  --ring: var(--brand);
+
+  --sidebar: #0b0b0c;
+  --sidebar-foreground: #d4d4d8;
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--on-brand);
+  --sidebar-accent: #1c1c1e;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: var(--brand);
+
+  /* Superficies de iOS */
+  --ios-grouped: #1c1c1e;
+  --ios-elevated: #2c2c2e;
+  --ios-separator: rgb(255 255 255 / 0.08);
+  --ios-label-2: #8e8e93;
+  --bubble-in: #262628;
+  --bubble-out: var(--brand);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-on-brand: var(--on-brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-soft-2: var(--brand-soft-2);
+  --color-on-bubble-bot: var(--on-bubble-bot);
+  --color-bubble-out-author: var(--bubble-out-author);
+  --color-ios-grouped: var(--ios-grouped);
+  --color-ios-elevated: var(--ios-elevated);
+  --color-ios-separator: var(--ios-separator);
+  --color-ios-label-2: var(--ios-label-2);
+  --color-bubble-in: var(--bubble-in);
+  --color-bubble-out: var(--bubble-out);
+  --color-bubble-bot: var(--bubble-bot);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-body), system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    font-family: var(--font-body), system-ui, sans-serif;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+.font-heading {
+  font-family: var(--font-heading), system-ui, sans-serif;
+}
+
+/* Tipografia del portal: San Francisco en Apple, Inter en el resto. */
+.font-ios {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-ios), "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.005em;
+}
+
+/* Fondo de chat tipo WhatsApp con iconos de servicio (public/chat-wallpaper.svg). */
+.chat-wallpaper {
+  background-color: var(--wallpaper-bg);
+  background-image: url("/chat-wallpaper.svg");
+  background-size: 320px 320px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Scrollbars discretos en modo oscuro */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.1);
+  border-radius: 999px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Piezas de interfaz estilo iOS (listas agrupadas de Ajustes). */
+@layer components {
+  .ios-section-title {
+    @apply px-4 pb-1.5 pt-6 text-[13px] uppercase tracking-wide text-ios-label-2;
+  }
+  .ios-group {
+    @apply overflow-hidden rounded-xl bg-ios-grouped;
+  }
+  .ios-group > * + * {
+    border-top: 1px solid var(--ios-separator);
+  }
+  .ios-row {
+    @apply flex min-h-11 items-center gap-3 px-4 py-2.5 text-left text-[16px];
+  }
+  button.ios-row:hover:not(:disabled) {
+    @apply bg-white/[0.04];
+  }
+  button.ios-row:disabled {
+    @apply opacity-50;
+  }
+  .ios-tile {
+    @apply flex flex-col items-center gap-1.5 rounded-xl bg-ios-grouped py-3 text-[13px] font-medium text-brand transition-colors hover:bg-ios-elevated;
+  }
+}

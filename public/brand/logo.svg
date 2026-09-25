@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Logo de AtiendeIA: burbuja de chat con destello de IA. Autor: Johann Steven Toro Aguirre -->
+  <defs>
+    <linearGradient id="pw-grad" x1="48" y1="40" x2="212" y2="212" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6d5dfc"/>
+      <stop offset="1" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+  <path d="M128 40c-50.8 0-92 34.9-92 78 0 22.4 11.2 42.6 29.1 56.8L58 212l41.8-19.6A106 106 0 0 0 128 196c50.8 0 92-34.9 92-78s-41.2-78-92-78Z" fill="url(#pw-grad)"/>
+  <path d="M128 76c3.4 17.6 13.9 28.1 31.5 31.5-17.6 3.4-28.1 13.9-31.5 31.5-3.4-17.6-13.9-28.1-31.5-31.5C114.1 104.1 124.6 93.6 128 76Z" fill="#fff"/>
+  <circle cx="167" cy="146" r="8" fill="#fff" opacity=".9"/>
+  <circle cx="92" cy="146" r="5" fill="#fff" opacity=".75"/>
+</svg>
